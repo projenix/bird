@@ -512,6 +512,7 @@ CF_CLI(SHOW ROUTE, r_args, [[[<prefix>|for <prefix>|for <ip>] [table <t>] [filte
 r_args:
    /* empty */ {
      $$ = cfg_allocz(sizeof(struct rt_show_data));
+     init_list(&($$->table));
      $$->filter = FILTER_ACCEPT;
    }
  | r_args net_any {
@@ -529,7 +530,7 @@ r_args:
  | r_args TABLE SYM {
      $$ = $1;
      if ($3->class != SYM_TABLE) cf_error("%s is not a table", $3->name);
-     $$->table = ((struct rtable_config *)$3->def)->table;
+     rt_show_add_table($$, ((struct rtable_config *)$3->def)->table);
    }
  | r_args FILTER filter {
      $$ = $1;

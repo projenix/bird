@@ -308,21 +308,34 @@ void rt_feed_channel_abort(struct channel *c);
 struct rtable_config *rt_new_table(struct symbol *s, uint addr_type);
 
 
+struct rt_show_data_rtable {
+  node n;
+  rtable *table;
+};
+
 struct rt_show_data {
   net_addr *addr;
-  rtable *table;
+  list table;
+  struct rt_show_data_rtable *tit;
   struct filter *filter;
-  int verbose;
+  int verbose, tables_defined_by;
   struct fib_iterator fit;
   struct proto *show_protocol;
   struct proto *export_protocol;
   struct channel *export_channel;
   int export_mode, primary_only, filtered;
   struct config *running_on_config;
-  int net_counter, rt_counter, show_counter;
+  int net_counter, rt_counter, show_counter, table_counter;
+  int net_counter_last, rt_counter_last, show_counter_last;
   int stats, show_for;
 };
 void rt_show(struct rt_show_data *);
+void rt_show_add_table(struct rt_show_data *d, rtable *t);
+
+/* Value of table definition mode in struct rt_show_data */
+#define RSD_TDB_DIRECT	  0		/* show route ... table X table Y ... */
+#define RSD_TDB_INDIRECT  1		/* show route ... protocol P ... */
+#define RSD_TDB_DEFAULT	  2		/* no table specified */
 
 /* Value of export_mode in struct rt_show_data */
 #define RSEM_NONE	0		/* Export mode not used */
