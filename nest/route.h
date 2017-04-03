@@ -327,15 +327,20 @@ struct rt_show_data {
   struct config *running_on_config;
   int net_counter, rt_counter, show_counter, table_counter;
   int net_counter_last, rt_counter_last, show_counter_last;
-  int stats, show_for;
+  int stats, show_for, stats_by_table;
 };
 void rt_show(struct rt_show_data *);
 void rt_show_add_table(struct rt_show_data *d, rtable *t);
+void rt_show_get_table(struct proto *p, struct rt_show_data *d);
 
 /* Value of table definition mode in struct rt_show_data */
-#define RSD_TDB_DIRECT	  0		/* show route ... table X table Y ... */
-#define RSD_TDB_INDIRECT  1		/* show route ... protocol P ... */
-#define RSD_TDB_DEFAULT	  2		/* no table specified */
+#define RSD_TDB_DEFAULT	  0		/* no table specified */
+#define RSD_TDB_INDIRECT  0		/* show route ... protocol P ... */
+#define RSD_TDB_ALL	  RSD_TDB_SET			/* show route ... table all ... */
+#define RSD_TDB_DIRECT	  RSD_TDB_SET | RSD_TDB_NMN	/* show route ... table X table Y ... */
+
+#define RSD_TDB_SET	  0x1		/* internal: show empty tables */
+#define RSD_TDB_NMN	  0x2		/* internal: need matching net */
 
 /* Value of export_mode in struct rt_show_data */
 #define RSEM_NONE	0		/* Export mode not used */

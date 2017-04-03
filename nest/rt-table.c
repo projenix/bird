@@ -2531,6 +2531,9 @@ rt_show_rte(struct cli *c, byte *ia, rte *e, struct rt_show_data *d, ea_list *tm
   else
     bsprintf(info, " (%d)", e->pref);
 
+  if (!d->show_counter)
+    cli_printf(c, -1007, "Table %s:", d->tit->table->name);
+
   cli_printf(c, -1007, "%-18s %s [%s %s%s]%s%s", ia, rta_dest_name(a->dest),
 	     a->src->proto->name, tm, from, primary ? (sync_error ? " !" : " *") : "", info);
 
@@ -2630,9 +2633,10 @@ rt_show_net(struct cli *c, net *n, struct rt_show_data *d)
       if (f_run(d->filter, &e, &tmpa, rte_update_pool, FF_FORCE_TMPATTR) > F_ACCEPT)
 	goto skip;
 
-      d->show_counter++;
       if (d->stats < 2)
 	rt_show_rte(c, ia, e, d, tmpa);
+
+      d->show_counter++;
       ia[0] = 0;
 
     skip:
@@ -2703,7 +2707,11 @@ rt_show_cont(struct cli *c)
       rt_show_net(c, n, d);
     }
   FIB_ITERATE_END;
-  if (d->stats)
+
+  if (!d->show_counter && (d->tables_defined_by & RSD_TDB_SET))
+    cli_printf(c, -1007, "Table %s:", d->tit->table->name);
+
+  if (d->stats && d->stats_by_table)
     cli_printf(c, -1007, "%d of %d routes for %d networks in table %s", d->show_counter - d->show_counter_last, d->rt_counter - d->rt_counter_last, d->net_counter - d->net_counter_last, d->tit->table->name);
 
   rt_unlock_table(d->tit->table);
@@ -2714,9 +2722,10 @@ rt_show_cont(struct cli *c)
       FIB_ITERATE_INIT(&d->fit, &d->tit->table->fib);
       d->show_counter_last = d->show_counter;
       d->rt_counter_last = d->rt_counter;
-      d->net_counter_last = d->rt_counter;
-      cli_printf(c, -1007, "");
-      cli_printf(c, -1007, "Table %s:", d->tit->table->name);
+      d->net_counter_last = d->net_counter;
+      d->show_counter = 0;
+      d->rt_counter = 0;
+      d->net_counter = 0;
       return;
     }
 
@@ -2735,7 +2744,7 @@ void rt_show_add_table(struct rt_show_data *d, rtable *t)
   add_tail(&(d->table), &(rsdr->n));
 }
 
-static inline void
+void
 rt_show_get_table(struct proto *p, struct rt_show_data *d)
 {
   struct channel *c;
@@ -2751,8 +2760,6 @@ rt_show_get_default_table(struct rt_show_data *d)
   for (int i=1; i<NET_MAX; i++)
     if (config->def_tables[i])
       rt_show_add_table(d, config->def_tables[i]->table);
-
-  d->tables_defined_by = RSD_TDB_DEFAULT;
 }
 
 void
@@ -2760,14 +2767,6 @@ rt_show(struct rt_show_data *d)
 {
   net *n;
 
-  if (EMPTY_LIST(d->table))
-    d->tables_defined_by = RSD_TDB_INDIRECT;
-  else
-    d->tables_defined_by = RSD_TDB_DIRECT;
-
-  /* Default is either a master table or a table related to a respective protocol */
-  if (EMPTY_LIST(d->table) && d->export_protocol) rt_show_get_table(d->export_protocol, d);
-  if (EMPTY_LIST(d->table) && d->show_protocol) rt_show_get_table(d->show_protocol, d);
   if (EMPTY_LIST(d->table)) rt_show_get_default_table(d);
 
   /* Filtered routes are neither exported nor have sensible ordering */
@@ -2783,7 +2782,6 @@ rt_show(struct rt_show_data *d)
       }
       d->tit = HEAD(d->table);
       FIB_ITERATE_INIT(&d->fit, &d->tit->table->fib);
-      cli_msg(-1007, "Table %s:", d->tit->table->name);
       this_cli->cont = rt_show_cont;
       this_cli->cleanup = rt_show_cleanup;
       this_cli->rover = d;
@@ -2808,7 +2806,7 @@ rt_show(struct rt_show_data *d)
 	if (rsdr->table->addr_type == d->addr->type)
 	  continue;
 
-	if (d->tables_defined_by == RSD_TDB_DIRECT)
+	if (d->tables_defined_by & RSD_TDB_NMN)
 	{
 	  cli_msg(8001, "Incompatible type of prefix/ip with table %s", rsdr->table->name);
 	  return;
@@ -2819,6 +2817,8 @@ rt_show(struct rt_show_data *d)
 
       WALK_LIST(rsdr, d->table)
       {
+	d->tit = rsdr;
+
 	if (d->show_for)
 	  n = net_route(rsdr->table, d->addr);
 	else
