@@ -72,8 +72,7 @@ net_route_ip4(struct fib *f, net_addr_ip4 *n)
 {
   net *r;
 
-  while (r = fib_find(f, (net_addr *) n),
-	 !(r && rte_is_valid(r->routes)) && (n->pxlen > 0))
+  while (r = net_find_valid(f, (net_addr *) n), (!r) && (n->pxlen > 0))
   {
     n->pxlen--;
     ip4_clrbit(&n->prefix, n->pxlen);
@@ -87,8 +86,7 @@ net_route_ip6(struct fib *f, net_addr_ip6 *n)
 {
   net *r;
 
-  while (r = fib_find(f, (net_addr *) n),
-	 !(r && rte_is_valid(r->routes)) && (n->pxlen > 0))
+  while (r = net_find_valid(f, (net_addr *) n), (!r) && (n->pxlen > 0))
   {
     n->pxlen--;
     ip6_clrbit(&n->prefix, n->pxlen);
