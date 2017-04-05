@@ -58,16 +58,13 @@
 
 #ifndef RTA_VIA
 #define RTA_VIA	 18
+#endif
 
-/* Let's hope that the sanity of kernel developers never allowed
- * existence of RTA_VIA without struct rtvia or vice versa.
- * We need both and it's too much work to implement it in configure script
- * and we have no crystal ball so we just hope, it should be enough. */
+#ifndef HAVE_STRUCT_RTVIA
 struct rtvia {
 	__kernel_sa_family_t	rtvia_family;
 	__u8			rtvia_addr[0];
 };
-
 #endif
 
 #ifndef RTA_NEWDST
